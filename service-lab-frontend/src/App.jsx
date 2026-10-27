@@ -1,5 +1,6 @@
 import './App.css'
+import LoginPage from "./page/LoginPage";
 
 export default function App() {
-  return <main>Service Lab</main>
+  return <LoginPage />;
 }
