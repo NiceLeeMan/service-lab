@@ -1,13 +1,47 @@
-import { useState, type SubmitEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
 import FormInput from "../components/common/FormInput";
 import SocialLoginButton from "../components/auth/SocialLoginButton";
 import { getKakaoOAuthConfig } from "../api/KakaoAuth";
 import kakaoLoginImage from "../asset/kakao_login.png";
 
+function getKakaoOAuthNotice() {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("oauth") !== "kakao") {
+        return "";
+    }
+
+    const status = params.get("status");
+    const reason = params.get("reason");
+
+    if (status === "success") {
+        return "카카오에서 ID 토큰을 정상적으로 발급받았습니다.";
+    }
+    if (status === "cancelled") {
+        return "카카오 로그인이 취소되었습니다.";
+    }
+    if (reason === "invalid_state") {
+        return "카카오 로그인 요청을 확인할 수 없습니다. 다시 시도해 주세요.";
+    }
+    if (reason === "missing_code") {
+        return "카카오에서 인가 코드를 받지 못했습니다.";
+    }
+
+    return "카카오 토큰 발급에 실패했습니다. 다시 시도해 주세요.";
+}
+
 export default function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [notice, setNotice] = useState("");
+    const [notice, setNotice] = useState(getKakaoOAuthNotice);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+
+        if (params.get("oauth") === "kakao") {
+            window.history.replaceState({}, "", window.location.pathname);
+        }
+    }, []);
 
     // API 연결 전에는 안내 메시지만 표시한다.
     function handleLogin(event: SubmitEvent<HTMLFormElement>) {
