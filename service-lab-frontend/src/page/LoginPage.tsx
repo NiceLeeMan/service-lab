@@ -7,6 +7,10 @@ import kakaoLoginImage from "../asset/kakao_login.png";
 function getKakaoOAuthNotice() {
     const params = new URLSearchParams(window.location.search);
 
+    if (params.get("signup") === "success") {
+        return "회원가입이 완료되었습니다. 로그인해 주세요.";
+    }
+
     if (params.get("oauth") !== "kakao") {
         return "";
     }
@@ -38,7 +42,7 @@ export default function LoginPage() {
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
 
-        if (params.get("oauth") === "kakao") {
+        if (params.get("oauth") === "kakao" || params.get("signup") === "success") {
             window.history.replaceState({}, "", window.location.pathname);
         }
     }, []);
@@ -189,7 +193,7 @@ export default function LoginPage() {
                         <span className="text-slate-500">아직 계정이 없으신가요?</span>
                         <button
                             type="button"
-                            onClick={() => setNotice("회원가입을 준비 중이에요.")}
+                            onClick={() => window.location.assign("/signup")}
                             className="cursor-pointer rounded font-semibold text-sky-600 hover:text-sky-700 focus-visible:outline-2 focus-visible:outline-sky-500"
                         >
                             회원가입
