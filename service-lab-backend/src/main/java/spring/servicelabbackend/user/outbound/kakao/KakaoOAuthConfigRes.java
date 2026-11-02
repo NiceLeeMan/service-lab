@@ -44,7 +44,7 @@ public record KakaoOAuthConfigRes(
                 clientId,
                 redirectUri,
                 "code",
-                "openid",
+                "openid,account_email",
                 state,
                 nonce
         );

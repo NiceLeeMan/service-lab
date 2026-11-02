@@ -66,6 +66,7 @@ export default function LoginPage() {
                 scope: config.scope,
                 state: config.state,
                 nonce: config.nonce,
+                prompt: "select_account",
             }).toString();
 
             // 3. 현재 탭을 이동시키며 카카오에 GET 인가 요청

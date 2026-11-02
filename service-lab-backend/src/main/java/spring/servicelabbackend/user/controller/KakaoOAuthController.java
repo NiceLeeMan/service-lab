@@ -9,10 +9,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
+import spring.servicelabbackend.user.User;
+import spring.servicelabbackend.user.UserRepository;
 import spring.servicelabbackend.user.application.KakaoOAuthService;
 import spring.servicelabbackend.user.outbound.kakao.KakaoOAuthConfigRes;
 import spring.servicelabbackend.user.outbound.kakao.KakaoOAuthTokenException;
@@ -35,8 +39,10 @@ public class KakaoOAuthController {
 
     private static final String OAUTH_STATE_SESSION_KEY = "KAKAO_OAUTH_STATE";
     private static final String OAUTH_NONCE_SESSION_KEY = "KAKAO_OAUTH_NONCE";
+    private static final String SOCIAL_SIGNUP_EMAIL_SESSION_KEY = "SOCIAL_SIGNUP_EMAIL";
 
     private final KakaoOAuthService kakaoOAuthService;
+    private final UserRepository userRepository;
 
     @Value("${oauth.kakao.frontend-redirect-uri}")
     private String frontendRedirectUri;
@@ -95,12 +101,65 @@ public class KakaoOAuthController {
         }
 
         try {
-            kakaoOAuthService.exchangeCodeForTokens(code);
-            return redirectToFrontend("success", null);
+            var tokenResponse = kakaoOAuthService.exchangeCodeForTokens(code);
+            String email = kakaoOAuthService.extractEmail(tokenResponse.idToken());
+
+            if (userRepository.existsByEmail(email)) {
+                return redirectToFrontend("success", null);
+            }
+
+            session.setAttribute(SOCIAL_SIGNUP_EMAIL_SESSION_KEY, email);
+            return redirectToSocialSignup();
         } catch (KakaoOAuthTokenException exception) {
             log.warn("Kakao OAuth token exchange failed: {}", exception.getMessage());
             return redirectToFrontend("error", "token_exchange_failed");
         }
+    }
+
+    @GetMapping("/signup")
+    public ResponseEntity<SocialSignupContextRes> getSocialSignupContext(
+            HttpSession session
+    ) {
+        String email = (String) session.getAttribute(SOCIAL_SIGNUP_EMAIL_SESSION_KEY);
+
+        if (email == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return ResponseEntity.ok(new SocialSignupContextRes(email));
+    }
+
+    @PostMapping("/signup")
+    public ResponseEntity<Void> socialSignup(
+            @RequestBody SocialSignupReq request,
+            HttpSession session
+    ) {
+        String email = (String) session.getAttribute(SOCIAL_SIGNUP_EMAIL_SESSION_KEY);
+
+        if (email == null || !email.equals(request.email())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User user = User.builder()
+                .nickname(request.nickname())
+                .phoneNumber(request.phoneNumber())
+                .email(email)
+                .password(null)
+                .build();
+
+        userRepository.save(user);
+        session.removeAttribute(SOCIAL_SIGNUP_EMAIL_SESSION_KEY);
+
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    private ResponseEntity<Void> redirectToSocialSignup() {
+        URI location = URI.create(frontendRedirectUri).resolve("/social-signup");
+
+        return ResponseEntity
+                .status(HttpStatus.FOUND)
+                .location(location)
+                .build();
     }
 
     private ResponseEntity<Void> redirectToFrontend(String status, String reason) {

@@ -30,3 +30,44 @@ export async function getKakaoOAuthConfig(): Promise<KakaoOAuthConfig> {
 
     return response.json();
 }
+
+export interface SocialSignupContext {
+    email: string;
+}
+
+export interface SocialSignupRequest {
+    nickname: string;
+    phoneNumber: string;
+    email: string;
+}
+
+export async function getSocialSignupContext(): Promise<SocialSignupContext> {
+    const response = await fetch(
+        "http://localhost:8080/api/auth/kakao/signup",
+        { credentials: "include" },
+    );
+
+    if (!response.ok) {
+        throw new Error("소셜 회원가입 정보를 불러오지 못했습니다.");
+    }
+
+    return response.json();
+}
+
+export async function submitSocialSignup(
+    request: SocialSignupRequest,
+): Promise<void> {
+    const response = await fetch(
+        "http://localhost:8080/api/auth/kakao/signup",
+        {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(request),
+        },
+    );
+
+    if (!response.ok) {
+        throw new Error("소셜 회원가입에 실패했습니다.");
+    }
+}

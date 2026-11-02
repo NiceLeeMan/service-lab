@@ -9,6 +9,8 @@ import org.springframework.web.client.RestClient;
 import spring.servicelabbackend.user.outbound.kakao.KakaoOAuthTokenException;
 import spring.servicelabbackend.user.outbound.kakao.KakaoOAuthTokenRes;
 
+import java.util.Base64;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.ExpectedCount.once;
@@ -82,5 +84,16 @@ class KakaoOAuthServiceTest {
                 .isInstanceOf(KakaoOAuthTokenException.class)
                 .hasMessageContaining("ID 토큰");
         server.verify();
+    }
+
+    @Test
+    void extractsEmailFromIdTokenClaims() {
+        String claims = Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString("{\"email\":\"member@example.com\"}".getBytes());
+
+        String email = service.extractEmail("header." + claims + ".signature");
+
+        assertThat(email).isEqualTo("member@example.com");
     }
 }

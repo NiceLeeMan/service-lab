@@ -11,6 +11,8 @@ import org.springframework.web.client.RestClientException;
 import spring.servicelabbackend.user.outbound.kakao.KakaoOAuthConfigRes;
 import spring.servicelabbackend.user.outbound.kakao.KakaoOAuthTokenException;
 import spring.servicelabbackend.user.outbound.kakao.KakaoOAuthTokenRes;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -25,6 +27,7 @@ public class KakaoOAuthService {
     private final String clientSecret;
     private final String redirectUri;
     private final RestClient kakaoAuthClient;
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Autowired
@@ -107,6 +110,32 @@ public class KakaoOAuthService {
         } catch (RestClientException exception) {
             throw new KakaoOAuthTokenException(
                     "카카오 토큰 API 요청에 실패했습니다.",
+                    exception
+            );
+        }
+    }
+
+    public String extractEmail(String idToken) {
+        try {
+            String[] tokenParts = idToken.split("\\.");
+            if (tokenParts.length != 3) {
+                throw new KakaoOAuthTokenException("카카오 ID 토큰 형식이 올바르지 않습니다.");
+            }
+
+            byte[] payload = Base64.getUrlDecoder().decode(tokenParts[1]);
+            JsonNode claims = objectMapper.readTree(payload);
+            String email = claims.path("email").asText();
+
+            if (email.isBlank()) {
+                throw new KakaoOAuthTokenException("카카오 ID 토큰에 이메일이 없습니다.");
+            }
+
+            return email;
+        } catch (KakaoOAuthTokenException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new KakaoOAuthTokenException(
+                    "카카오 ID 토큰에서 이메일을 읽지 못했습니다.",
                     exception
             );
         }

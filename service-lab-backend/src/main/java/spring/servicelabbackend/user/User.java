@@ -26,7 +26,7 @@ public class User {
     private String email;
 
     // 해시된 비밀번호 저장
-    @Column(nullable = false, length = 255)
+    @Column(length = 255)
     private String password;
 
     @Builder
